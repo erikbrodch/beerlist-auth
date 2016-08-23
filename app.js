@@ -106,8 +106,9 @@ passport.deserializeUser(function (user, done) {
   done(null, user);
 });
 
-var LocalStrategy = require('passport-local').Strategy;
 
+var LocalStrategy = require('passport-local').Strategy;
+//sign up authenticate
 passport.use('register', new LocalStrategy(function (username, password, done) {
   User.findOne({ 'username': username }, function (err, user) {
     // In case of any error return
@@ -143,6 +144,30 @@ passport.use('register', new LocalStrategy(function (username, password, done) {
   });
 }));
 
+//Login authenticate
+var LocalStrategy = require('passport-local').Strategy;
+//login authenticate
+passport.use('login', new LocalStrategy(function (username, password, done) {
+  User.findOne({ 'username': username, 'password': password },function (err, user) {
+    // In case of any error return
+    if (err) {
+      console.log('Error in login: ' + err);
+      return done(err);
+    }
+
+    else if (!user) {
+      console.log('no such login');
+      return done(err);
+    }
+
+
+    console.log('User logged-in');
+      return done(null, user);
+
+  });
+}));
+
+
 app.post('/register', passport.authenticate('register'), function (req, res) {
   res.json(req.user);
 });
@@ -150,6 +175,17 @@ app.post('/register', passport.authenticate('register'), function (req, res) {
 // send the current user back!
 app.get('/currentUser', function (req, res) {
   res.send(req.user);
+});
+
+//login post route
+app.post('/login', passport.authenticate('login'), function (req, res) {
+  res.json(req.user);
+});
+
+//logout
+app.get('/logout', function (req, res) {
+  req.logout();
+  res.send('Logged out!');
 });
 
 app.listen(4000);
