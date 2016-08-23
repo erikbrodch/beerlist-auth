@@ -6,7 +6,7 @@ mongoose.connect('mongodb://localhost/beers');
 
 var Beer = require("./models/BeerModel");
 var Review = require("./models/ReviewModel");
-var User = require("./models/userModel")
+var User = require("./models/UserModel");
 
 var app = express();
 
@@ -16,6 +16,7 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static('public'));
 app.use(express.static('node_modules'));
 
+//------------------------
 // For authentication:
 var passport = require('passport');
 var expressSession = require('express-session');
@@ -24,6 +25,7 @@ app.use(expressSession({ secret: 'mySecretKey' }));
 
 app.use(passport.initialize());
 app.use(passport.session());
+//------------------------
 
 app.get('/beers', function (req, res) {
   Beer.find(function (error, beers) {
@@ -39,10 +41,6 @@ app.post('/beers', function (req, res, next) {
 
     res.json(beer);
   });
-});
-
-app.post('/register', passport.authenticate('register'), function (req, res) {
-  res.json(req.user);
 });
 
 app.put('/beers/:id',  function(req, res, next) {
@@ -86,19 +84,6 @@ app.post('/beers/:id/reviews', function(req, res, next) {
   });
 });
 
-var LocalStrategy = require('passport-local').Strategy;
-
-passport.use('register', new LocalStrategy(function (username, password, done) {
-  var user = {
-    username: username,
-    password: password
-  }
-
-  console.log(user);
-
-  done(null, user);
-}));
-
 app.delete('/beers/:beer/reviews/:review', function(req, res, next) {
   Beer.findById(req.params.beer, function (err, beer) {
     for (var i = 0; i < beer.reviews.length; i ++) {
@@ -111,6 +96,60 @@ app.delete('/beers/:beer/reviews/:review', function(req, res, next) {
       }
     }
   });
+});
+
+passport.serializeUser(function (user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function (user, done) {
+  done(null, user);
+});
+
+var LocalStrategy = require('passport-local').Strategy;
+
+passport.use('register', new LocalStrategy(function (username, password, done) {
+  User.findOne({ 'username': username }, function (err, user) {
+    // In case of any error return
+    if (err) {
+      console.log('Error in SignUp: ' + err);
+      return done(err);
+    }
+
+    // already exists
+    if (user) {
+      console.log('User already exists');
+      return done(null, false);
+    } else {
+      // if there is no user with that matches
+      // create the user
+      var newUser = new User();
+
+      // set the user's local credentials
+      newUser.username = username;
+      newUser.password = password;    // Note: Should create a hash out of this plain password!
+
+      // save the user
+      newUser.save(function (err) {
+        if (err) {
+          console.log('Error in Saving user: ' + err);
+          throw err;
+        }
+
+        console.log('User Registration successful');
+        return done(null, newUser);
+      });
+    }
+  });
+}));
+
+app.post('/register', passport.authenticate('register'), function (req, res) {
+  res.json(req.user);
+});
+
+// send the current user back!
+app.get('/currentUser', function (req, res) {
+  res.send(req.user);
 });
 
 app.listen(4000);
